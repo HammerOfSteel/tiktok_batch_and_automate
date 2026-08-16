@@ -16,6 +16,21 @@ available to third party apps at all**.
 If that is the case, we find out in Phase 0 and adjust the product honestly, rather than discovering it in
 Phase 4 with a UI already built around it.
 
+## Prior art, and what it actually tells us
+
+Tools that perform bulk TikTok deletion clearly exist. Redact and several Chrome extensions delete a user's own
+videos in bulk, filtered by date range and similar criteria.
+
+They are evidence that **the capability is reachable**, not that the official API offers it. Those tools run
+inside the user's own logged in browser session and drive the same internal web endpoints the TikTok web app
+uses, or automate the interface directly. Undocumented, unsupported, changeable without notice, and outside the
+platform's terms.
+
+We do not take that route. The boundary and the reasoning are recorded in
+[adr/0009-unofficial-access-boundary.md](adr/0009-unofficial-access-boundary.md). Short version: official API
+only, a tracked manual checklist for anything it cannot do, no browser session credentials on our servers, and
+no companion extension.
+
 ## Surfaces
 
 | API | Purpose | Used for |

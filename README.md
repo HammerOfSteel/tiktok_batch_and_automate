@@ -70,6 +70,7 @@ during the Phase 0 research spikes.
 | Layer | Proposal | ADR |
 | --- | --- | --- |
 | Frontend | SvelteKit 2 + Svelte 5 + TypeScript + Tailwind + [shadcn-svelte](https://github.com/huntabyte/shadcn-svelte) | [ADR-0002](docs/adr/0002-frontend-stack.md) |
+| Expressive UI layer | [Aceternity UI Svelte](https://aceternity.sveltekit.io/components), allowlisted and budgeted | [ADR-0008](docs/adr/0008-visual-effects-layer.md) |
 | Automation canvas | [Svelte Flow](https://svelteflow.dev/) (`@xyflow/svelte`) | [ADR-0006](docs/adr/0006-automation-canvas-library.md) |
 | Backend API | NestJS + TypeScript, layered per onion architecture | [ADR-0003](docs/adr/0003-backend-stack.md) |
 | Database | PostgreSQL + Prisma | [ADR-0003](docs/adr/0003-backend-stack.md) |
@@ -130,6 +131,7 @@ Full setup, troubleshooting and day to day commands: [docs/development.md](docs/
 | [docs/data-model.md](docs/data-model.md) | Understand entities, aggregates and the schema. |
 | [docs/testing-strategy.md](docs/testing-strategy.md) | Know what to test, at what level and with which tool. |
 | [docs/development.md](docs/development.md) | Get the stack running or debug it. |
+| [docs/design-system.md](docs/design-system.md) | Build UI, add an effect, or check a motion or performance budget. |
 | [docs/security.md](docs/security.md) | Handle tokens, secrets, authorization or user data. |
 | [docs/features/dashboard.md](docs/features/dashboard.md) | Build or change the video dashboard. |
 | [docs/features/batch-actions.md](docs/features/batch-actions.md) | Build or change bulk operations. |
@@ -164,6 +166,10 @@ These shape the whole design and are validated first in Phase 0. See
   exists for third parties, "batch delete" and "batch privacy change" degrade to a guided, auditable
   checklist instead of a true API action. This is the single biggest scope risk and is resolved by spike
   `S-01` before anything is built on top of it.
+- **Tools like Redact and various browser extensions do bulk delete, but not through the official API.** They
+  run inside the user's own logged in browser session against undocumented internal endpoints. We do not take
+  that route: no private endpoints, no stored browser session credentials, no companion extension. The
+  reasoning is in [ADR-0009](docs/adr/0009-unofficial-access-boundary.md).
 - **Unaudited apps are sandboxed.** Posts may be restricted to private visibility and to a small set of test
   users until the app passes review. Plan for a long audit lead time.
 - **Rate limits and quotas apply per app and per user.** Every outbound call goes through one rate limited

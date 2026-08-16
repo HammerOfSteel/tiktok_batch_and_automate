@@ -45,6 +45,8 @@ Timebox each spike. The output of a spike is an ADR, never code that ships.
         **edit** a caption after posting?
   - [ ] Record quotas, rate limits, sandbox restrictions and audit requirements.
   - [ ] Define the fallback UX for anything not supported (guided checklist, tracked as "manual action").
+        The boundary is already decided in [ADR-0009](adr/0009-unofficial-access-boundary.md): official API
+        only, no private endpoints, no session credentials, no companion extension.
   - [ ] Write [docs/tiktok-integration.md](tiktok-integration.md) capability matrix with a link to each source.
   - **Commit:** `docs(spike): S-01 tiktok api capability audit`
 - [ ] **0.1.2 `S-02` Automation canvas library** `[parallel]`
@@ -68,10 +70,20 @@ Timebox each spike. The output of a spike is an ADR, never code that ships.
   - [ ] Create the app, request scopes, note client key and secret handling, submit for audit early.
   - [ ] Document the sandbox setup in [tiktok-integration.md](tiktok-integration.md).
   - **Commit:** `docs: document tiktok developer app setup`
+- [ ] **0.1.7 `S-05` Expressive component layer** `[parallel]`
+  - [ ] Verify the licence of Aceternity UI and of the Svelte port at
+        [aceternity.sveltekit.io](https://aceternity.sveltekit.io/components), for both.
+  - [ ] Verify Svelte 5 compatibility of the allowlisted components in
+        [design-system.md](design-system.md), and note which motion dependency the port pulls in.
+  - [ ] Vendor **one** animated background into a throwaway page and measure: bundle delta, idle CPU, LCP.
+  - [ ] Confirm `prefers-reduced-motion` can be honoured, in the component or through our adaptation.
+  - [ ] Confirm contrast of text over the animated background at its worst frame, not its first.
+  - **Commit:** `docs(spike): S-05 expressive component layer`, update [ADR-0008](adr/0008-visual-effects-layer.md)
 
 **Gate 0.1**
 - All ADRs in [adr/](adr/) that were `Proposed` are now `Accepted` or `Superseded`, with reasoning.
 - `S-01` capability matrix exists and every headline feature is marked supported, degraded or dropped.
+- `S-05` has a measured verdict on the effects layer, not an impression.
 - The plan below is updated if a spike invalidated it.
 
 ### 0.2 Repository and tooling scaffolding
@@ -106,8 +118,11 @@ Timebox each spike. The output of a spike is an ADR, never code that ships.
   - **Commit:** `feat(api): add application skeleton with health endpoints`
 - [ ] **0.3.2 Web skeleton** `[parallel]`
   - [ ] SvelteKit app, Tailwind, shadcn-svelte initialised, base layout, light and dark theme.
+  - [ ] Design tokens per [design-system.md](design-system.md): colour, spacing, radius, type, motion duration.
+        No hex value ever lives in a component.
+  - [ ] A `useReducedMotion` primitive and a global motion kill switch, in place **before** the first effect.
   - [ ] App shell: sidebar, top bar, empty routes for `/dashboard`, `/automations`, `/jobs`, `/settings`.
-  - **Commit:** `feat(web): add application shell and base theme`
+  - **Commit:** `feat(web): add application shell, tokens and base theme`
 - [ ] **0.3.3 Docker Compose stack** `[blocked-by 0.3.1, 0.3.2]`
   - [ ] Services: `web`, `api`, `worker`, `postgres`, `redis`, `minio`, `mailpit`.
   - [ ] Hot reload with bind mounts for `web` and `api`, named volumes for dependencies.
@@ -294,6 +309,36 @@ Spec: [features/automation-engine.md](features/automation-engine.md). Execution 
 - E2E: build a three node flow by dragging, reload the page, the flow is still there and still valid.
 - E2E: attempt an invalid connection, get a clear inline error, no crash, no silent failure.
 
+### 1.6 Landing page and expressive polish `[blocked-by 0.1.7]`
+
+Spec: [design-system.md](design-system.md). Do this **after** the application surfaces work, not before. A
+landing page for a product that does not function yet is the most expensive kind of procrastination.
+
+- [ ] **1.6.1 Effects primitives**
+  - [ ] Vendor only the allowlisted components into `lib/components/effects`.
+  - [ ] Audit each one on arrival: roles, labels, focus behaviour, `prefers-reduced-motion`, off screen pause.
+  - [ ] One line comment per adaptation saying why it was changed.
+  - **Commit:** `feat(web): add vetted effects primitives`
+- [ ] **1.6.2 Landing page** `[blocked-by 1.6.1]`
+  - [ ] Hero with **one** animated background, headline reveal, one spotlit call to action.
+  - [ ] Feature section, honest screenshots of the real dashboard, not mockups.
+  - [ ] Static fallback for reduced motion, and a graceful no-JavaScript render.
+  - **Commit:** `feat(web): add landing page`
+- [ ] **1.6.3 Application moments** `[blocked-by 1.6.1]`
+  - [ ] Selection bar entrance, job progress pulse, job complete flourish, empty state illustrations.
+  - [ ] Multi step loader for first sync, with **real** stages only.
+  - [ ] Nothing added to the video card. It stays plain, per [ADR-0008](adr/0008-visual-effects-layer.md).
+  - **Commit:** `feat(web): add motion to key product moments`
+
+**Gate 1.6**
+- Budget: landing page JavaScript under 150 KB gzipped, dashboard route under 250 KB gzipped.
+- Budget: LCP under 2.0 s on the landing page, under 1.5 s on the dashboard.
+- Budget: animated background under 5 percent CPU while idle, measured on a mid range laptop.
+- Budget: 60 fps scrolling with 500 cards loaded. Measured, not assumed.
+- E2E: with `prefers-reduced-motion: reduce`, every non essential animation is off and the page is fully usable.
+- A11y: contrast passes over the animated background at its **worst** frame.
+- Review: one animated background per page, and no effect on the video card. Walk the routes and confirm.
+
 **Gate 1 (phase gate)**
 
 | Check | Threshold |
@@ -305,7 +350,8 @@ Spec: [features/automation-engine.md](features/automation-engine.md). Execution 
 | A11y | Zero critical axe violations on every route, keyboard only pass documented |
 | Performance | `GET /v1/videos` p95 under 300 ms with 10,000 seeded rows |
 | No hardcoded data | Grep the web app for fixture arrays, there must be none outside tests |
-| Design review | Walkthrough against [features/dashboard.md](features/dashboard.md), sign off recorded |
+| Motion | Reduced motion respected everywhere, budgets in Gate 1.6 met |
+| Design review | Walkthrough against [features/dashboard.md](features/dashboard.md) and [design-system.md](design-system.md), sign off recorded |
 
 **Push:** push the phase branch, open a pull request, merge after review. Tag `v0.1.0-ui`.
 

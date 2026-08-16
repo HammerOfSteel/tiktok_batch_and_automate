@@ -20,8 +20,9 @@ Start here.
 | [data-model.md](data-model.md) | Aggregates, tables, indexes, local versus remote ownership |
 | [testing-strategy.md](testing-strategy.md) | Levels, tools, coverage thresholds, what we do not test |
 | [development.md](development.md) | Compose stack, commands, debugging, common problems |
+| [design-system.md](design-system.md) | Visual registers, component allowlist, motion rules, performance budgets |
 | [security.md](security.md) | Threat model, auth, tokens, destructive action safety, OWASP mapping |
-| [tiktok-integration.md](tiktok-integration.md) | Capability matrix, client design, sync and publish design, compliance |
+| [tiktok-integration.md](tiktok-integration.md) | Capability matrix, prior art, client design, sync and publish design, compliance |
 | [glossary.md](glossary.md) | Ubiquitous language, and the words we deliberately avoid |
 
 ## Feature specifications
