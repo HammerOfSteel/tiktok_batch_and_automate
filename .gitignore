@@ -8,6 +8,11 @@ local_dev_variables.env
 *.key
 secrets/
 
+# Local development agents skills
+.agents/
+.claude/
+.cline/
+
 # Dependencies
 node_modules/
 .pnpm-store/
