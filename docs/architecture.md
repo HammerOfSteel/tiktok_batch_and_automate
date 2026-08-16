@@ -99,7 +99,8 @@ Two implementations:
 Chosen by configuration (`TIKTOK_ADAPTER=seeded|live`). This is what makes the Phase 1 to Phase 3 transition a
 configuration change plus one new class, instead of a rewrite of the UI.
 
-`capabilities()` exists because of risk R-1 in [overview.md](overview.md). The UI asks the API what is
+`capabilities()` exists because the available actions depend on the configured execution strategy, per
+[ADR-0010](adr/0010-browser-session-execution.md). The UI asks the API what is
 possible and renders accordingly, so an unsupported action is never offered and then silently fails.
 
 ## Domain modelling, applied lightly

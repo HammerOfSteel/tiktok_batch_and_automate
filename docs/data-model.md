@@ -94,14 +94,15 @@ Split conceptually into remote mirrored fields and local only fields. Local fiel
 | `cover_url` | `text` | remote | May expire, refreshed on sync |
 | `share_url` | `text` | remote | |
 | `duration_seconds` | `int` | remote | |
-| `privacy` | `enum` | remote | `PUBLIC`, `FRIENDS`, `PRIVATE`, `UNKNOWN` |
-| `status` | `enum` | local | `DRAFT`, `SCHEDULED`, `PUBLISHING`, `PUBLISHED`, `FAILED`, `REMOVED_REMOTELY` |
-| `published_at` | `timestamptz` | remote | |
+| `privacy` | `enum` | local | `PUBLIC`, `FRIENDS`, `SELF_ONLY`, `UNKNOWN`. **Only known for videos we posted.** The API does not expose privacy on existing videos, so synced videos are `UNKNOWN` |
+| `status` | `enum` | local | `DRAFT`, `SCHEDULED`, `PUBLISHING`, `PUBLISHED`, `FAILED`, `UNAVAILABLE` |
+| `published_at` | `timestamptz` | remote | From `create_time` |
 | `view_count`, `like_count`, `comment_count`, `share_count` | `bigint` | remote | Latest snapshot, denormalised for sorting |
 | `metrics_updated_at` | `timestamptz` | local | Drives the staleness warning |
 | `category_id` | `ulid` | local | Nullable FK |
 | `notes` | `text` | local | Free text, never sent upstream |
-| `deleted_remotely_at` | `timestamptz` | local | Set when a sync no longer sees it. We do not hard delete |
+| `last_seen_at` | `timestamptz` | local | Last sync in which the API returned this video |
+| `unavailable_since` | `timestamptz` | local | Set when it stops being returned. **Not** the same as deleted, see below |
 | `created_at` / `updated_at` | `timestamptz` | local | |
 
 Indexes: `(account_id, published_at desc)`, `(account_id, view_count desc)`, `(account_id, status)`,
@@ -254,9 +255,16 @@ Append only. No update path exists in the code, and the database role has no `UP
 
 ## Local versus remote, the rule that matters most
 
-TikTok owns: caption, cover, metrics, privacy, publish time.
-We own: tags, category, notes, status history, job history, automation state.
+TikTok owns: caption, cover, metrics, publish time.
+We own: tags, category, notes, status history, job history, automation state, privacy as far as we know it.
 
 A sync **updates remote owned fields and never touches local owned fields**. This is asserted by an
 integration test in the Phase 3 gate, because getting it wrong silently destroys the user's organisational
 work, which is the entire value of the product.
+
+### Absence is not deletion
+
+`/v2/video/list/` returns **public videos only**, so a video disappearing may mean deleted, or made private, or
+temporarily unavailable. The model reflects that uncertainty rather than guessing: set `unavailable_since` and
+move `status` to `UNAVAILABLE`, never delete the row and never claim it was removed. See
+[tiktok-integration.md](tiktok-integration.md).

@@ -1,8 +1,29 @@
 # ADR-0009: How far we go to support delete and privacy changes
 
-- **Status:** Accepted
+- **Status:** **Superseded by [ADR-0010](0010-browser-session-execution.md)** on 2026-08-16, the same day it was written
 - **Date:** 2026-08-16
 - **Related:** [tiktok-integration.md](../tiktok-integration.md), [features/batch-actions.md](../features/batch-actions.md), spike `S-01`
+
+## Correction, why this was superseded so quickly
+
+This ADR was written on inadequate research and contains two factual errors. It is kept, unedited below the
+line, because the reasoning trail matters more than looking right.
+
+1. **Wrong about the mechanism.** It states that the existing tools "drive the same internal web endpoints the
+   TikTok web application itself calls". That is not what they do. SocialEraser is
+   [MIT licensed and readable](https://github.com/socialeraser/SocialEraser), and its
+   `platforms/tiktok-project/scripts/tiktok-automation.js` performs **DOM automation of TikTok Studio**: find
+   the row action button, click it, wait for the popover, click the delete icon, wait for the confirm modal,
+   click confirm. No internal API, no request signing. Roughly 0.9 seconds per item.
+2. **Wrong about the constraint.** Option D (local browser automation) was dismissed as "option C's credential
+   problem wearing a different hat". That conflated a hosted multi tenant service with a **self hosted single
+   user deployment**. In our Compose stack the browser, the profile and the traffic all stay on the user's own
+   machine, which is exactly the Redact model, and the objection does not transfer.
+
+The decision also asserted an official-API-only constraint that the product owner never set. That was my
+preference presented as a requirement. [ADR-0010](0010-browser-session-execution.md) replaces this.
+
+---
 
 ## Context
 

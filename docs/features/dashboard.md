@@ -63,7 +63,7 @@ pagination cannot skip or repeat.
 | Filter | Control |
 | --- | --- |
 | Status | Multi select chips |
-| Privacy | Multi select chips |
+| Privacy | Multi select chips. **Only meaningful for videos posted through this app**, since the API does not expose privacy on existing videos. Everything else is `UNKNOWN` and the filter says so |
 | Category | Sidebar selection, includes descendants by default with a toggle for "this category only" |
 | Tags | Multi select, AND or OR toggle |
 | Published date | Presets (7, 30, 90 days, this year) plus a custom range |

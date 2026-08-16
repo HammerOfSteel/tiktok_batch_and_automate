@@ -103,8 +103,10 @@ Detail and gates: [TODO.md](TODO.md).
 
 | ID | Risk | Impact | Mitigation |
 | --- | --- | --- | --- |
-| R-1 | TikTok's public API offers no delete or privacy update for existing videos | Guts two headline features | Spike `S-01` in Phase 0. Fallback: guided manual checklist with tracking, plus honest UI copy |
-| R-2 | App audit is slow or rejected | Blocks Phases 3 to 5 in production | Apply for audit during Phase 0, build against the sandbox, keep the seeded data path working |
+| R-1 | ~~TikTok's public API offers no delete or privacy update~~ **Confirmed by `S-01`, and resolved.** The official API cannot do it, the browser strategy can | Was: guts two headline features | [ADR-0010](adr/0010-browser-session-execution.md). Manual checklist survives as the degradation path |
+| R-2 | ~~App audit is slow or rejected~~ **No longer on the critical path.** The browser strategy needs no audit | Was: blocks Phases 3 to 5 | Audit still pursued for the `API` publishing strategy, but nothing waits on it |
+| R-6 | **TikTok ships a UI change and the browser strategy breaks** | Delete, privacy and full-library sync stop working | Selectors in versioned config, canary check before every run, scheduled drift alert, fast update path, manual fallback |
+| R-7 | **Account restriction from automated activity** | User loses the account the product manages | Human pacing with jitter, rate caps, no evasion beyond pacing, explicit risk disclosure and opt in |
 | R-3 | Rate limits make large batches slow | Poor UX on big selections | Central throttled client, queue backpressure, honest ETA in the UI, resumable jobs |
 | R-4 | Automation canvas becomes a general purpose programming language | Endless scope | Fixed node catalogue per [features/automation-engine.md](features/automation-engine.md), no scripting node in v1 |
 | R-5 | Metrics drift between local cache and TikTok | Wrong automation decisions | Freshness stamp on every metric, staleness threshold in conditions, visible "last synced" |

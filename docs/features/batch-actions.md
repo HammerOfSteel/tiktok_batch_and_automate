@@ -28,31 +28,43 @@ history.
 
 ## Supported actions
 
-| Action | Target | Depends on TikTok support | Notes |
+| Action | Target | `BROWSER` strategy | `API` strategy |
 | --- | --- | --- | --- |
-| `ADD_TAG` / `REMOVE_TAG` | Videos | No, local only | Always available, always fast |
-| `SET_CATEGORY` | Videos | No, local only | |
-| `EDIT_NOTES` | Videos | No, local only | |
-| `UPLOAD` | Assets | Yes | Phase 4 |
-| `PUBLISH` | Assets | Yes | Phase 4, may be scheduled |
-| `SET_PRIVACY` | Videos | **Verify in `S-01`** | Falls back to a tracked manual action if unsupported |
-| `DELETE` | Videos | **Verify in `S-01`** | Same fallback |
-| `EDIT_METADATA` | Videos | **Verify in `S-01`** | Same fallback |
+| `ADD_TAG` / `REMOVE_TAG` | Videos | Local only, always available | Local only, always available |
+| `SET_CATEGORY` | Videos | Local only | Local only |
+| `EDIT_NOTES` | Videos | Local only | Local only |
+| `UPLOAD` | Assets | Supported | **Supported, and better** |
+| `PUBLISH` | Assets | Supported | **Supported, and better.** Privacy set at post time |
+| `SET_PRIVACY` | Videos | **Supported** | No API support, manual fallback |
+| `DELETE` | Videos | **Supported** | No API support, manual fallback |
+| `EDIT_METADATA` | Videos | **Supported** | No API support, manual fallback |
 
-The API exposes a **capability matrix** per connected account. The UI never offers an action the platform
-cannot perform. See [../tiktok-integration.md](../tiktok-integration.md).
+The API exposes a **capability matrix** per connected account, computed from the configured execution strategy
+per [ADR-0010](../adr/0010-browser-session-execution.md). The UI never offers an action that cannot be
+performed. See [../tiktok-integration.md](../tiktok-integration.md).
+
+### Extra states for the browser strategy
+
+Browser driven actions can fail in ways an API cannot, so the job model gains two non terminal states:
+
+| State | Meaning | Resolution |
+| --- | --- | --- |
+| `AWAITING_ATTENTION` | A captcha, login challenge or unrecognised page interrupted the run | The user opens the live browser view, resolves it, and the job resumes from the last completed item |
+| `SELECTORS_STALE` | The canary check failed, TikTok's interface has changed | The job stops before clicking anything. Fail visibly rather than click blind |
+
+Neither is a failure. Both are pauses, and both preserve per item progress.
 
 ### The manual fallback
 
-If TikTok offers no third party endpoint for an action, we do not pretend and we do not automate the web UI.
-Instead the job becomes a **tracked manual action list**:
+Now a **degradation path**, not the primary mechanism. It applies when the browser strategy is unavailable,
+selectors are stale, or the user has chosen the `API` strategy.
 
 - The job is created with status `AWAITING_MANUAL`, with one item per video.
-- The UI shows a checklist with a deep link to each video inside TikTok.
+- The UI shows a checklist with a deep link to each video inside TikTok, in the user's chosen order.
 - The user completes it there and marks each item done, or bulk marks the batch as done.
-- The next sync verifies reality and reconciles anything that does not match.
+- The next sync verifies reality rather than trusting the tick box.
 
-Honest, auditable, and still far better than a spreadsheet. The UI copy explains exactly why the step is manual.
+The UI copy explains exactly why the step is manual, and links to the reasoning.
 
 ## Selections
 

@@ -156,25 +156,41 @@ Full setup, troubleshooting and day to day commands: [docs/development.md](docs/
 
 The detailed version with tasks, subtasks, gates and commit points is in [docs/TODO.md](docs/TODO.md).
 
-## Known constraints
+## How it talks to TikTok
 
-These shape the whole design and are validated first in Phase 0. See
-[docs/tiktok-integration.md](docs/tiktok-integration.md) for the full analysis.
+The single most important design fact, resolved by spike `S-01` and decided in
+[ADR-0010](docs/adr/0010-browser-session-execution.md). Full analysis in
+[docs/tiktok-integration.md](docs/tiktok-integration.md).
 
-- **Deletion and editing of existing videos may not be available through TikTok's public API.** The Content
-  Posting API covers creating posts and the Display API covers reading them. If no delete or update endpoint
-  exists for third parties, "batch delete" and "batch privacy change" degrade to a guided, auditable
-  checklist instead of a true API action. This is the single biggest scope risk and is resolved by spike
-  `S-01` before anything is built on top of it.
-- **Tools like Redact and various browser extensions do bulk delete, but not through the official API.** They
-  run inside the user's own logged in browser session against undocumented internal endpoints. We do not take
-  that route: no private endpoints, no stored browser session credentials, no companion extension. The
-  reasoning is in [ADR-0009](docs/adr/0009-unofficial-access-boundary.md).
-- **Unaudited apps are sandboxed.** Posts may be restricted to private visibility and to a small set of test
-  users until the app passes review. Plan for a long audit lead time.
-- **Rate limits and quotas apply per app and per user.** Every outbound call goes through one rate limited
-  client with backoff, and batch jobs are throttled accordingly.
-- **Tokens expire and refresh tokens rotate.** Token storage is encrypted at rest and refresh is centralised.
+**The official TikTok API cannot delete, unpublish, re-privatise or edit an existing video.** Only three video
+scopes exist (`video.list`, `video.publish`, `video.upload`), and `video.list` returns *public* videos only.
+That is a hard limit of the API.
+
+It is not a limit on the product. Working tools (Redact, SocialEraser, DeleteTik) do bulk deletion today by
+acting as the **signed in user in a real browser**, driving TikTok Studio's own interface. SocialEraser is
+[MIT licensed](https://github.com/socialeraser/SocialEraser), so the approach is readable rather than guessed
+at. Redact is a locally installed desktop app, which is the same shape as our self hosted Compose stack.
+
+So there are three execution strategies behind one port:
+
+| Strategy | Role | Can delete? | Reads private videos? | Needs app audit? |
+| --- | --- | --- | --- | --- |
+| `SEEDED` | Development, CI, every test, demo mode | n/a | n/a | No |
+| `BROWSER` | **Primary.** Library sync and lifecycle actions | **Yes** | **Yes** | No |
+| `API` | Optional, best for uploading and publishing | No | No | Yes |
+
+Consequences worth knowing before reading the plan:
+
+- **The browser strategy is fragile by nature.** A TikTok UI change breaks it. Selectors live in versioned
+  config, a canary check runs before every job, and a scheduled drift alert catches breakage before a user
+  does.
+- **It is very likely contrary to TikTok's terms of service**, and carries account risk. It acts only on the
+  signed in user's own account and own content, at human pace, entirely on their own machine, with no
+  credential ever reaching a server we control. The product discloses this and requires explicit opt in.
+- **Nothing waits on app audit any more.** That was the longest lead time item in the plan.
+- **The manual checklist survives** as the degradation path when the browser strategy is unavailable.
+- **Rate limits and pacing.** Roughly one action per second with jitter, so a 1,000 video operation is a
+  background job of about fifteen minutes, not an instant one.
 
 ## Contributing
 

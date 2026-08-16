@@ -24,7 +24,8 @@ that supersedes the old one. Never edit history, the reasoning at the time is th
 | [0006](0006-automation-canvas-library.md) | Svelte Flow for the automation canvas | Proposed |
 | [0007](0007-seeded-adapter-over-mock-server.md) | A seeded adapter behind a port, not a mock server | Accepted |
 | [0008](0008-visual-effects-layer.md) | Aceternity UI Svelte as a bounded expressive layer | Proposed |
-| [0009](0009-unofficial-access-boundary.md) | How far we go to support delete and privacy changes | Accepted |
+| [0009](0009-unofficial-access-boundary.md) | How far we go to support delete and privacy changes | Superseded by ADR-0010 |
+| [0010](0010-browser-session-execution.md) | Browser session automation as the primary execution strategy | Proposed |
 
 ## Template
 

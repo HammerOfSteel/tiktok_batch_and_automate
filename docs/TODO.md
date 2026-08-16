@@ -39,16 +39,29 @@ The single source of truth for what gets built, in what order, and how we know i
 
 Timebox each spike. The output of a spike is an ADR, never code that ships.
 
-- [ ] **0.1.1 `S-01` TikTok API capability audit** (highest priority, blocks scope)
-  - [ ] Enumerate available endpoints: Login Kit scopes, Display API, Content Posting API.
-  - [ ] Answer explicitly: can a third party app **delete** a video? **change privacy** of an existing video?
-        **edit** a caption after posting?
-  - [ ] Record quotas, rate limits, sandbox restrictions and audit requirements.
-  - [ ] Define the fallback UX for anything not supported (guided checklist, tracked as "manual action").
-        The boundary is already decided in [ADR-0009](adr/0009-unofficial-access-boundary.md): official API
-        only, no private endpoints, no session credentials, no companion extension.
-  - [ ] Write [docs/tiktok-integration.md](tiktok-integration.md) capability matrix with a link to each source.
+- [x] **0.1.1 `S-01` TikTok API capability audit** (highest priority, blocks scope)
+  - [x] Enumerate available endpoints: Login Kit scopes, Display API, Content Posting API.
+  - [x] Answer explicitly: can a third party app **delete** a video? **change privacy** of an existing video?
+        **edit** a caption after posting? **Answer: no, no and no.** Only three video scopes exist.
+  - [x] Record quotas, rate limits, sandbox restrictions and audit requirements.
+  - [x] Write [docs/tiktok-integration.md](tiktok-integration.md) capability matrix with a link to each source.
   - **Commit:** `docs(spike): S-01 tiktok api capability audit`
+  - **Outcome:** the official API cannot do the headline actions. This does **not** end the question, it moves
+        it to `S-06`. See [ADR-0010](adr/0010-browser-session-execution.md).
+- [ ] **0.1.8 `S-06` Browser session strategy** (now the highest priority spike, blocks Phases 3 and 4)
+  - [ ] Confirm TikTok Studio exposes the full library, including private and unlisted, with metrics and
+        privacy readable per row.
+  - [ ] Prototype in a container: Playwright + Chromium, persistent profile volume, one-time interactive login
+        through a live view, session survives a container restart.
+  - [ ] Prototype the read path: enumerate the library, extract id, caption, date, metrics, privacy.
+  - [ ] Prototype the delete path on a **throwaway account with disposable content**: row action, popover,
+        confirm. Measure the real per item rate.
+  - [ ] Design the selector config format, with an ordered fallback list per target and a canary check.
+  - [ ] Determine how captcha and login challenges present, and how the live view lets a user resolve them.
+  - [ ] Record the failure modes actually hit, against the ones
+        [ADR-0010](adr/0010-browser-session-execution.md) predicts from the reference implementation.
+  - **Commit:** `docs(spike): S-06 browser session strategy`, move
+        [ADR-0010](adr/0010-browser-session-execution.md) to Accepted or replace it
 - [ ] **0.1.2 `S-02` Automation canvas library** `[parallel]`
   - [ ] Compare Svelte Flow (`@xyflow/svelte`) against alternatives and against building it in house.
   - [ ] Build a throwaway prototype: 3 nodes, drag, connect, save graph to JSON, reload it.
@@ -69,6 +82,8 @@ Timebox each spike. The output of a spike is an ADR, never code that ships.
 - [ ] **0.1.6 Register the TikTok developer app**
   - [ ] Create the app, request scopes, note client key and secret handling, submit for audit early.
   - [ ] Document the sandbox setup in [tiktok-integration.md](tiktok-integration.md).
+  - [ ] Now **lower priority**, since the browser strategy removes audit from the critical path. Still worth
+        starting early, because the `API` strategy is the better publishing path once approved.
   - **Commit:** `docs: document tiktok developer app setup`
 - [ ] **0.1.7 `S-05` Expressive component layer** `[parallel]`
   - [ ] Verify the licence of Aceternity UI and of the Svelte port at
@@ -425,42 +440,68 @@ landing page for a product that does not function yet is the most expensive kind
 
 ## Phase 3: real TikTok reads
 
-**Goal:** the dashboard shows real, synced videos.
+**Goal:** the dashboard shows the user's real, complete library.
 **Exit:** a connected account's real videos appear and stay fresh, and the seeded path still works for tests.
 
-- [ ] **3.1.1 TikTok client**
-  - [ ] One HTTP client with retries, exponential backoff with jitter, a circuit breaker and a rate limiter.
-  - [ ] Every response parsed through a schema so upstream shape changes fail loudly and early.
-  - [ ] Structured logging of every call with the correlation id, never with tokens.
-  - **Commit:** `feat(infra): add rate limited tiktok api client`
-- [ ] **3.1.2 Real adapter behind the existing port** `[blocked-by 3.1.1]`
-  - [ ] Implement the same port as the seeded adapter. Choose the adapter by configuration.
-  - [ ] Map upstream fields to the domain model in one place, with the mapping unit tested.
-  - **Commit:** `feat(infra): add live tiktok video adapter`
-- [ ] **3.1.3 Sync engine** `[blocked-by 3.1.2]`
+> **Strategy:** the `BROWSER` strategy is primary here, per
+> [ADR-0010](adr/0010-browser-session-execution.md), because it reads the **full** library including private
+> videos, and the API cannot. The `API` adapter is still built, because it is simpler, legitimate, and the
+> right fallback when the browser session needs attention.
+
+- [ ] **3.1.1 Browser session infrastructure** `[blocked-by 0.1.8]`
+  - [ ] Playwright and Chromium in the `worker` image, persistent profile in a named volume.
+  - [ ] One-time interactive login through a live view of the browser, session survives a restart.
+  - [ ] Session encrypted at rest, never logged, never exposed through the API.
+  - [ ] Health check: is the session still valid, and when was it last confirmed.
+  - **Commit:** `feat(infra): add browser session runtime`
+- [ ] **3.1.2 Selector config and canary** `[blocked-by 3.1.1]`
+  - [ ] Versioned selector file, ordered fallback list per target, no selector inline in code. Lint this.
+  - [ ] Canary check before every run, failing with `SELECTORS_STALE` rather than clicking blind.
+  - [ ] Scheduled canary job against the real site, alerting on drift before a user hits it.
+  - **Commit:** `feat(infra): add selector config and staleness canary`
+- [ ] **3.1.3 Browser read adapter** `[blocked-by 3.1.2]`
+  - [ ] Implement the existing port. Enumerate the library from TikTok Studio with scroll pagination.
+  - [ ] Extract id, caption, date, metrics, privacy, and map to the domain model in one tested place.
+  - [ ] Human pacing with jitter, overlay dismissal, stuck watchdog.
+  - **Commit:** `feat(infra): add browser session read adapter`
+- [ ] **3.1.4 API read adapter** `[parallel]` `[blocked-by 0.1.6]`
+  - [ ] One HTTP client with retries, backoff with jitter, circuit breaker, rate limiter.
+  - [ ] Same port, schema validated responses, structured logging that never touches tokens.
+  - [ ] Handle the disappearance problem: absence is never treated as deletion.
+  - **Commit:** `feat(infra): add official api read adapter`
+- [ ] **3.1.5 Strategy selection and capabilities** `[blocked-by 3.1.3, 3.1.4]`
+  - [ ] `capabilities()` reports per configured strategy. The UI offers only what is actually possible.
+  - [ ] Graceful degradation: browser unavailable falls back to API reads, with the limit stated in the UI.
+  - **Commit:** `feat(api): add execution strategy selection and capability reporting`
+- [ ] **3.1.6 Sync engine** `[blocked-by 3.1.5]`
   - [ ] Full sync on first connect, incremental sync on a schedule, manual "sync now".
-  - [ ] Reconcile: new, updated, and remotely deleted videos. Never destroy local only fields.
+  - [ ] Reconcile: new, updated, and removed videos. Never destroy local only fields.
   - [ ] Track `last_synced_at` per account and per video, and expose staleness in the API.
   - **Commit:** `feat(api): add video sync engine with reconciliation`
-- [ ] **3.1.4 Metrics history** `[blocked-by 3.1.3]`
+- [ ] **3.1.7 Metrics history** `[blocked-by 3.1.6]`
   - [ ] Snapshot metrics over time so automations can act on trends, with a retention policy.
   - **Commit:** `feat(api): add metrics history snapshots`
-- [ ] **3.1.5 Sync UI** `[blocked-by 3.1.3]`
+- [ ] **3.1.8 Sync and session UI** `[blocked-by 3.1.6]`
   - [ ] "Last synced" indicator, manual sync button, sync failure banner with a real remedy.
-  - **Commit:** `feat(web): surface sync state and manual sync`
+  - [ ] Session health, reconnect flow, and the live browser view for resolving a challenge.
+  - **Commit:** `feat(web): surface sync state, session health and attention flow`
 
 **Gate 3 (phase gate)**
 
 | Check | Detail |
 | --- | --- |
-| Unit | Field mapping, including missing optional fields and unexpected enum values |
-| Unit | Backoff and circuit breaker behaviour with a fake clock |
-| Integration | Sync against a recorded fixture server (MSW or WireMock): create, update and remote delete cases |
-| Integration | Rate limit response triggers backoff and the job resumes, it does not fail the whole sync |
-| Integration | Local only fields (tags, notes) survive a full resync. Non negotiable |
-| Smoke | Against the real sandbox, connect an account and complete a full sync manually. Record the result |
+| Unit | Field mapping for both adapters, including missing fields and unexpected values |
+| Unit | Backoff, circuit breaker and pacing with a fake clock |
+| Unit | Selector resolution, including fallback order and the stale case |
+| Integration | Browser adapter against a **recorded TikTok Studio DOM snapshot**: list, paginate, extract |
+| Integration | Canary correctly fails the run when the snapshot's selectors are changed. Prove it |
+| Integration | API adapter against a recorded fixture server: create, update, disappearance cases |
+| Integration | Local only fields (tags, notes) survive a full resync on **both** adapters. Non negotiable |
+| Integration | Session lost mid sync moves the job to `AWAITING_ATTENTION` and resumes after re-auth |
+| Smoke | Real account, full sync through the browser strategy. Verify private videos appear. Record it |
+| Smoke | Container restart mid sync, the session persists and the job resumes |
 | E2E | Dashboard renders synced videos, "sync now" updates the timestamp |
-| Performance | Sync of 1,000 videos stays inside the rate limit and completes within the documented window |
+| Performance | Sync of 1,000 videos completes within the documented window at the configured pace |
 
 **Push:** tag `v0.3.0-sync`.
 
@@ -468,8 +509,8 @@ landing page for a product that does not function yet is the most expensive kind
 
 ## Phase 4: real TikTok writes
 
-**Goal:** upload, publish and whatever lifecycle actions `S-01` confirmed as available.
-**Exit:** a batch upload of five videos succeeds against the sandbox, unattended.
+**Goal:** upload and publish, plus the lifecycle actions the browser strategy makes possible.
+**Exit:** a batch upload of five videos succeeds unattended, and a filtered batch delete works end to end.
 
 - [ ] **4.1.1 Asset upload pipeline**
   - [ ] Resumable, chunked upload from the browser to object storage with a checksum.
@@ -485,14 +526,23 @@ landing page for a product that does not function yet is the most expensive kind
   - [ ] Per file caption, privacy, allowed interactions and scheduled time, plus "apply to all" defaults.
   - [ ] Sequential processing inside the rate limit, resumable after a restart.
   - **Commit:** `feat(api): add batch upload job`
-- [ ] **4.1.4 Lifecycle actions** `[blocked-by 0.1.1]`
-  - [ ] Implement delete and privacy change **if supported**.
-  - [ ] If not supported, ship the fallback: a tracked manual action queue with clear UI copy explaining why,
-        deep links into the app, and a "mark as done" that keeps local state truthful.
-  - **Commit:** `feat(api): add lifecycle actions or tracked manual fallback`
-- [ ] **4.1.5 Upload UI** `[blocked-by 4.1.3]`
+- [ ] **4.1.4 Browser lifecycle actions** `[blocked-by 3.1.3]`
+  - [ ] Delete: row action, popover, confirm. Verified against the recorded DOM snapshot first.
+  - [ ] Change privacy and edit caption, same pattern.
+  - [ ] Archive prompt before a first bulk delete, since deletion is irreversible within seconds.
+  - [ ] Every action reports per item outcome into the existing batch job machinery. No parallel path.
+  - **Commit:** `feat(infra): add browser session lifecycle actions`
+- [ ] **4.1.5 Manual fallback path** `[blocked-by 4.1.4]`
+  - [ ] Used when the browser strategy is unavailable, or the user chose the `API` strategy.
+  - [ ] Tracked manual action queue, clear UI copy on why, deep links, "mark as done", verified on next sync.
+  - **Commit:** `feat(api): add tracked manual action fallback`
+- [ ] **4.1.6 Upload UI** `[blocked-by 4.1.3]`
   - [ ] Drag and drop many files, per file progress, per file settings, retry one, cancel all.
   - **Commit:** `feat(web): add batch upload experience`
+- [ ] **4.1.7 Risk disclosure** `[blocked-by 4.1.4]`
+  - [ ] Before first use of the browser strategy: state plainly that it automates the user's own session, that
+        it is very likely contrary to TikTok's terms, and that account risk exists. Explicit opt in, recorded.
+  - **Commit:** `feat(web): add browser strategy risk disclosure`
 
 **Gate 4 (phase gate)**
 
@@ -502,6 +552,8 @@ landing page for a product that does not function yet is the most expensive kind
 | Unit | Upstream error code to domain error mapping, exhaustive over the documented list |
 | Integration | Full publish flow against a fixture server, including the "processing failed" terminal state |
 | Integration | Interrupted upload resumes from the last chunk |
+| Integration | Delete flow against the recorded DOM snapshot, including the overlay-steals-the-click case |
+| Integration | Dry run of a destructive batch performs zero clicks. Assert on the audit log |
 | Integration | Batch of 5 where 1 file is invalid: 4 publish, 1 fails with a clear reason, job is `partial` |
 | Smoke | Real sandbox: publish 1 video manually end to end. Record the evidence |
 | Smoke | Real sandbox: batch of 5, unattended, all succeed |
